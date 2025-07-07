@@ -12,7 +12,9 @@ struct Item: Identifiable, Codable, Equatable, Hashable {
 struct ContentView: View {
     @State private var name = ""
     @State private var price = ""
-    @State private var date = ""
+    @State private var dateString = ""
+    @State private var date = Date()
+    @State private var showCalendar = false
 
     @State private var items: [Item] = []
     @State private var selectedItem: Item? = nil
@@ -37,9 +39,30 @@ struct ContentView: View {
                     .textFieldStyle(RoundedBorderTextFieldStyle())
                     .frame(width: 250)
 
-                TextField("Datum", text: $date)
-                    .textFieldStyle(RoundedBorderTextFieldStyle())
-                    .frame(width: 250)
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Text("Datum: \(dateString.isEmpty ? "–" : dateString)")
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                        Button {
+                            showCalendar.toggle()
+                        } label: {
+                            Image(systemName: "calendar")
+                        }
+                    }
+
+                    if showCalendar {
+                        DatePicker(
+                            "Datum auswählen",
+                            selection: $date,
+                            displayedComponents: [.date]
+                        )
+                        .datePickerStyle(GraphicalDatePickerStyle())
+                        .onChange(of: date) { newDate in
+                            dateString = formatDate(newDate)
+                        }
+                    }
+                }
+                .frame(width: 250)
 
                 HStack {
                     Button("+") {
@@ -91,7 +114,6 @@ struct ContentView: View {
                 }
                 .padding()
 
-                // Total Cost Anzeige unten rechts
                 Text("Total: € \(totalCost, specifier: "%.2f")")
                     .font(.title2)
                     .bold()
@@ -111,19 +133,19 @@ struct ContentView: View {
     // MARK: - Funktionen
 
     func addItem() {
-        guard !name.isEmpty, !price.isEmpty, !date.isEmpty,
+        guard !name.isEmpty, !price.isEmpty, !dateString.isEmpty,
               let preis = Double(price) else {
             print("❌ Ungültige Eingabe")
             return
         }
 
-        let newItem = Item(name: name, price: preis, date: date)
+        let newItem = Item(name: name, price: preis, date: dateString)
         items.append(newItem)
         saveItemsToFile(items)
 
         name = ""
         price = ""
-        date = ""
+        dateString = ""
         selectedItem = nil
     }
 
@@ -133,90 +155,10 @@ struct ContentView: View {
         saveItemsToFile(items)
     }
 
-    func printList() {
-        let savePanel = NSSavePanel()
-        savePanel.allowedFileTypes = ["pdf"]
-        savePanel.nameFieldStringValue = "Rechnung.pdf"
-        savePanel.canCreateDirectories = true
-        savePanel.title = "Rechnung speichern unter"
-
-        savePanel.begin { result in
-            guard result == .OK, let url = savePanel.url else {
-                print("❌ Speichern abgebrochen")
-                return
-            }
-
-            let pdfDocument = PDFDocument()
-            let pageBounds = CGRect(x: 0, y: 0, width: 595.2, height: 841.8) // DIN A4
-
-            let text = NSMutableAttributedString()
-
-            // 🔹 Kopfzeile
-            let formatter = DateFormatter()
-            formatter.dateStyle = .long
-            let currentDate = formatter.string(from: Date())
-
-            let header = """
-
-            RECHNUNG
-            Datum: \(currentDate)
-
-            --------------------------------------------
-
-            """
-            text.append(NSAttributedString(string: header, attributes: [
-                .font: NSFont.systemFont(ofSize: 13)
-            ]))
-
-            // 🔹 Tabellenkopf
-            let tableHeader = String(format: "%-25@ %-10@ %-12@\n", "Name", "Preis", "Datum")
-            text.append(NSAttributedString(string: tableHeader, attributes: [
-                .font: NSFont.boldSystemFont(ofSize: 13)
-            ]))
-
-            text.append(NSAttributedString(string: "--------------------------------------------\n", attributes: [
-                .font: NSFont.systemFont(ofSize: 12)
-            ]))
-
-            // 🔹 Items
-            for item in items {
-                let line = String(format: "%-25@ €%-9.2f %-12@\n", item.name, item.price, item.date)
-                text.append(NSAttributedString(string: line, attributes: [
-                    .font: NSFont.systemFont(ofSize: 12)
-                ]))
-            }
-
-            text.append(NSAttributedString(string: "\n", attributes: [:]))
-
-            // 🔹 Total
-            let totalLine = "Gesamtsumme: € \(String(format: "%.2f", totalCost))"
-            text.append(NSAttributedString(string: totalLine, attributes: [
-                .font: NSFont.boldSystemFont(ofSize: 14)
-            ]))
-
-            // 🔹 TextView für PDF-Erstellung
-            let textView = NSTextView(frame: pageBounds)
-            textView.textStorage?.setAttributedString(text)
-            textView.drawsBackground = false
-
-            let rep = textView.bitmapImageRepForCachingDisplay(in: textView.bounds)!
-            textView.cacheDisplay(in: textView.bounds, to: rep)
-
-            let image = NSImage(size: textView.bounds.size)
-            image.addRepresentation(rep)
-
-            if let pdfPage = PDFPage(image: image) {
-                pdfDocument.insert(pdfPage, at: 0)
-                if pdfDocument.write(to: url) {
-                    print("✅ Rechnung gespeichert: \(url.path)")
-                    NSWorkspace.shared.open(url)
-                } else {
-                    print("❌ PDF konnte nicht gespeichert werden")
-                }
-            } else {
-                print("❌ PDF-Seite konnte nicht erstellt werden")
-            }
-        }
+    func formatDate(_ date: Date) -> String {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        return formatter.string(from: date)
     }
 
     func getItemsFileURL() -> URL {
@@ -243,6 +185,93 @@ struct ContentView: View {
             return []
         }
     }
+
+    func printList() {
+            let savePanel = NSSavePanel()
+            savePanel.allowedFileTypes = ["pdf"]
+            savePanel.nameFieldStringValue = "Rechnung.pdf"
+            savePanel.canCreateDirectories = true
+            savePanel.title = "Rechnung speichern unter"
+
+            savePanel.begin { result in
+                guard result == .OK, let url = savePanel.url else {
+                    print("❌ Speichern abgebrochen")
+                    return
+                }
+
+                let pdfDocument = PDFDocument()
+                let pageBounds = CGRect(x: 0, y: 0, width: 595.2, height: 841.8) // DIN A4
+
+                let text = NSMutableAttributedString()
+
+                // 🔹 Kopfzeile
+                let formatter = DateFormatter()
+                formatter.dateStyle = .long
+                let currentDate = formatter.string(from: Date())
+
+                let header = """
+
+                RECHNUNG
+                Datum: \(currentDate)
+
+                --------------------------------------------
+
+                """
+                text.append(NSAttributedString(string: header, attributes: [
+                    .font: NSFont.systemFont(ofSize: 13)
+                ]))
+
+                // 🔹 Tabellenkopf
+                let tableHeader = String(format: "%-25@ %-10@ %-12@\n", "Name", "Preis", "Datum")
+                text.append(NSAttributedString(string: tableHeader, attributes: [
+                    .font: NSFont.boldSystemFont(ofSize: 13)
+                ]))
+
+                text.append(NSAttributedString(string: "--------------------------------------------\n", attributes: [
+                    .font: NSFont.systemFont(ofSize: 12)
+                ]))
+
+                // 🔹 Items
+                for item in items {
+                    let line = String(format: "%-25@ €%-9.2f %-12@\n", item.name, item.price, item.date)
+                    text.append(NSAttributedString(string: line, attributes: [
+                        .font: NSFont.systemFont(ofSize: 12)
+                    ]))
+                }
+
+                text.append(NSAttributedString(string: "\n", attributes: [:]))
+
+                // 🔹 Total
+                let totalLine = "Gesamtsumme: € \(String(format: "%.2f", totalCost))"
+                text.append(NSAttributedString(string: totalLine, attributes: [
+                    .font: NSFont.boldSystemFont(ofSize: 14)
+                ]))
+
+                // 🔹 TextView für PDF-Erstellung
+                let textView = NSTextView(frame: pageBounds)
+                textView.textStorage?.setAttributedString(text)
+                textView.drawsBackground = false
+
+                let rep = textView.bitmapImageRepForCachingDisplay(in: textView.bounds)!
+                textView.cacheDisplay(in: textView.bounds, to: rep)
+
+                let image = NSImage(size: textView.bounds.size)
+                image.addRepresentation(rep)
+
+                if let pdfPage = PDFPage(image: image) {
+                    pdfDocument.insert(pdfPage, at: 0)
+                    if pdfDocument.write(to: url) {
+                        print("✅ Rechnung gespeichert: \(url.path)")
+                        NSWorkspace.shared.open(url)
+                    } else {
+                        print("❌ PDF konnte nicht gespeichert werden")
+                    }
+                } else {
+                    print("❌ PDF-Seite konnte nicht erstellt werden")
+                }
+            }
+        }
+
 }
 
 #Preview {
