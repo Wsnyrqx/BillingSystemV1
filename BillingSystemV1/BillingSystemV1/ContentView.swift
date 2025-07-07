@@ -64,28 +64,65 @@ struct ContentView: View {
                 }
                 .frame(width: 250)
 
-                HStack {
-                    Button("+") {
-                        addItem()
-                    }
-                    .font(.title3)
+                
+                VStack{
+                    HStack {
+                        Button("+") {
+                            addItem()
+                        }
+                        .font(.title3)
+                        .keyboardShortcut(.return,modifiers: [])
 
-                    Button("Print") {
-                        printList()
+                        Button("Print") {
+                            printList()
+                        }
+                        .font(.title3)
+                        .keyboardShortcut("p", modifiers: [.command])
                     }
-                    .font(.title3)
+                    if let selected = selectedItem {
+                        Button("-") {
+                            removeItem(selected)
+                        }
+                        .font(.title2)
+                        .keyboardShortcut(.delete, modifiers: [.command])
+                    }
+
+                    Spacer()
                 }
-
-                if let selected = selectedItem {
-                    Button("-") {
-                        removeItem(selected)
+                .padding()
+                HStack{
+                    Button("Sort By Price ↑") {
+                        sortItemsByPrice(ascending: true)
                     }
-                    .font(.title2)
-                }
 
-                Spacer()
+                    Button("Sort By Price ↓") {
+                        sortItemsByPrice(ascending: false)
+                    }
+                }
+                HStack{
+                    Button("Sort by Name ↑") {
+                        sortItemsByName(ascending: true)
+                    }
+
+                    Button("Sort by Name ↓") {
+                        sortItemsByName(ascending: false)
+                    }
+
+                }
+                HStack{
+                    Button("Sort by Date ↑") {
+                        sortItemsByDate(ascending: true)
+                    }
+
+                    Button("Sort by Date ↓") {
+                        sortItemsByDate(ascending: false)
+                    }
+
+                }
             }
-            .padding()
+                
+
+                
 
             Divider()
 
@@ -271,6 +308,42 @@ struct ContentView: View {
                 }
             }
         }
+   
+    func sortItemsByName(ascending: Bool = true) {
+        if ascending {
+            items.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
+        } else {
+            items.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedDescending }
+        }
+        saveItemsToFile(items)
+    }
+
+    
+    func sortItemsByDate(ascending: Bool = true) {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "dd-MM-yyyy"
+
+        items.sort {
+            guard
+                let d1 = formatter.date(from: $0.date),
+                let d2 = formatter.date(from: $1.date)
+            else {
+                return false
+            }
+            return ascending ? d1 < d2 : d1 > d2
+        }
+
+        saveItemsToFile(items)
+    }
+
+    func sortItemsByPrice(ascending: Bool = true) {
+        if ascending {
+            items.sort { $0.price < $1.price }
+        } else {
+            items.sort { $0.price > $1.price }
+        }
+        saveItemsToFile(items)
+    }
 
 }
 
