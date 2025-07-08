@@ -118,67 +118,8 @@ struct ContentView: View {
 
                     Spacer()
                 }
-<<<<<<< HEAD
                 .padding()
-=======
                 .frame(width: 250)
-
-                
-                VStack{
-                    HStack {
-                        Button("+") {
-                            addItem()
-                        }
-                        .font(.title3)
-                        .keyboardShortcut(.return,modifiers: [])
-
-                        Button("Print") {
-                            printList()
-                        }
-                        .font(.title3)
-                        .keyboardShortcut("p", modifiers: [.command])
-                    }
-                    if let selected = selectedItem {
-                        Button("-") {
-                            removeItem(selected)
-                        }
-                        .font(.title2)
-                        .keyboardShortcut(.delete, modifiers: [.command])
-                    }
-
-                    Spacer()
-                }
-                .padding()
-                HStack{
-                    Button("Sort By Price ↑") {
-                        sortItemsByPrice(ascending: true)
-                    }
-
-                    Button("Sort By Price ↓") {
-                        sortItemsByPrice(ascending: false)
-                    }
-                }
-                HStack{
-                    Button("Sort by Name ↑") {
-                        sortItemsByName(ascending: true)
-                    }
-
-                    Button("Sort by Name ↓") {
-                        sortItemsByName(ascending: false)
-                    }
-
-                }
-                HStack{
-                    Button("Sort by Date ↑") {
-                        sortItemsByDate(ascending: true)
-                    }
-
-                    Button("Sort by Date ↓") {
-                        sortItemsByDate(ascending: false)
-                    }
-
-                }
->>>>>>> origin/main
             }
                 
 
@@ -408,7 +349,6 @@ struct ContentView: View {
         }
         saveItemsToFile(items)
     }
-<<<<<<< HEAD
     func editItem(_ selected: Item) {
         name = selected.name
         price = String(format: "%.2f", selected.price) // Double → String
@@ -422,8 +362,6 @@ struct ContentView: View {
         formatter.dateStyle = .medium
         return formatter.date(from: string)
     }
-=======
->>>>>>> origin/main
 
 }
 
