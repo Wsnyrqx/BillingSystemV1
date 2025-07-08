@@ -25,100 +25,100 @@ struct ContentView: View {
 
     var body: some View {
         HStack {
-            // 🔹 Linke Seite: Eingabe + Buttons
-            VStack(alignment: .leading, spacing: 16) {
+            VStack(spacing: 16) {
                 Text("Neues Item")
                     .font(.title2)
                     .bold()
+                    .frame(maxWidth: .infinity, alignment: .center)
 
                 TextField("Name", text: $name)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
                     .frame(width: 250)
+                    .frame(maxWidth: .infinity, alignment: .center)
 
                 TextField("Preis", text: $price)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
                     .frame(width: 250)
+                    .frame(maxWidth: .infinity, alignment: .center)
 
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(spacing: 8) {
                     HStack {
                         Text("Datum: \(dateString.isEmpty ? "–" : dateString)")
-                            .frame(maxWidth: .infinity, alignment: .leading)
                         Button {
                             showCalendar.toggle()
                         } label: {
                             Image(systemName: "calendar")
                         }
                     }
+                    .frame(maxWidth: .infinity, alignment: .center)
 
                     if showCalendar {
-                        DatePicker(
-                            "Datum auswählen",
-                            selection: $date,
-                            displayedComponents: [.date]
-                        )
-                        .datePickerStyle(GraphicalDatePickerStyle())
-                        .onChange(of: date) { newDate in
-                            dateString = formatDate(newDate)
-                        }
+                        DatePicker("Datum auswählen", selection: $date, displayedComponents: [.date])
+                            .datePickerStyle(GraphicalDatePickerStyle())
+                            .onChange(of: date) { newDate in
+                                dateString = formatDate(newDate)
+                            }
+                            .frame(maxWidth: .infinity, alignment: .center)
                     }
-                }
-                .frame(width: 250)
+                }.frame(width: 250)
 
-                
+                Divider()
                 VStack{
-                    HStack {
-                        Button("+") {
-                            addItem()
-                        }
-                        .font(.title3)
-                        .keyboardShortcut(.return,modifiers: [])
-
-                        Button("Print") {
-                            printList()
-                        }
-                        .font(.title3)
-                        .keyboardShortcut("p", modifiers: [.command])
-                    }
-                    if let selected = selectedItem {
-                        Button("-") {
-                            removeItem(selected)
-                        }
+                    Text("Filtering & Editing")
                         .font(.title2)
-                        .keyboardShortcut(.delete, modifiers: [.command])
-                    }
+                        .bold()
+                        .frame(maxWidth: .infinity, alignment: .center)
+                    Menu("Basics"){
+                        Section("Add | Delete | Edit"){
+                            Button("Add") {addItem()}.font(.title3).keyboardShortcut(.return,modifiers: [])
+                            if let selected = selectedItem {
+                                Button("Delete") {
+                                    removeItem(selected)
+                                }
+                                .font(.title2)
+                                .keyboardShortcut(.delete, modifiers: [.command])
+                            }
+                            if let selected = selectedItem {
+                                Button("Edit") {
+                                    editItem(selected)
+                                }
+                            }
+                            
+                        }
+                        Section("Print"){
+                            Button("Print") {
+                                printList()
+                            }
+                            .font(.title3)
+                            .keyboardShortcut("p", modifiers: [.command])
+                        }
+                        Section("Refresh"){
+                            Button("↻ Refresh") {
+                                items = loadItemsFromFile()
+                            }
+                            .font(.title3)
+                            .keyboardShortcut("r",modifiers: [.command])
+                        }
+                    }.font(.title3).frame(width: 250)
+    
+                    Menu("Sortieren") {
+                        Section("Name") {
+                            Button("A → Z") { sortItemsByName(ascending: true) }
+                            Button("Z → A") { sortItemsByName(ascending: false) }
+                        }
+                        Section("Preis") {
+                            Button("Günstig → Teuer") { sortItemsByPrice(ascending: true) }
+                            Button("Teuer → Günstig") { sortItemsByPrice(ascending: false) }
+                        }
+                        Section("Datum") {
+                            Button("Alt → Neu") { sortItemsByDate(ascending: true) }
+                            Button("Neu → Alt") { sortItemsByDate(ascending: false) }
+                        }
+                    }.font(.title3).frame(width: 250)
 
                     Spacer()
                 }
                 .padding()
-                HStack{
-                    Button("Sort By Price ↑") {
-                        sortItemsByPrice(ascending: true)
-                    }
-
-                    Button("Sort By Price ↓") {
-                        sortItemsByPrice(ascending: false)
-                    }
-                }
-                HStack{
-                    Button("Sort by Name ↑") {
-                        sortItemsByName(ascending: true)
-                    }
-
-                    Button("Sort by Name ↓") {
-                        sortItemsByName(ascending: false)
-                    }
-
-                }
-                HStack{
-                    Button("Sort by Date ↑") {
-                        sortItemsByDate(ascending: true)
-                    }
-
-                    Button("Sort by Date ↓") {
-                        sortItemsByDate(ascending: false)
-                    }
-
-                }
             }
                 
 
@@ -145,7 +145,11 @@ struct ContentView: View {
                         .padding(.vertical, 4)
                         .background(item == selectedItem ? Color.blue.opacity(0.1) : Color.clear)
                         .onTapGesture {
-                            selectedItem = item
+                            if selectedItem == item {
+                                selectedItem = nil  // Toggle aus
+                            } else {
+                                selectedItem = item  // Neues Item selektieren
+                            }
                         }
                     }
                 }
@@ -343,6 +347,19 @@ struct ContentView: View {
             items.sort { $0.price > $1.price }
         }
         saveItemsToFile(items)
+    }
+    func editItem(_ selected: Item) {
+        name = selected.name
+        price = String(format: "%.2f", selected.price) // Double → String
+        dateString = selected.date                     // String bleibt String
+        if let parsedDate = parseDate(from: selected.date) {
+            date = parsedDate                          // String → Date
+        }
+    }
+    func parseDate(from string: String) -> Date? {
+        let formatter = DateFormatter()
+        formatter.dateStyle = .medium
+        return formatter.date(from: string)
     }
 
 }
