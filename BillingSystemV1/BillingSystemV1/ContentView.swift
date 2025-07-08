@@ -1,3 +1,5 @@
+//Update 2
+
 import SwiftUI
 import AppKit
 import PDFKit
@@ -122,12 +124,8 @@ struct ContentView: View {
                 .frame(width: 250)
             }
                 
-
-                
-
             Divider()
-
-            // 🔹 Rechte Seite: Liste + Total Overlay
+            
             ZStack(alignment: .bottomTrailing) {
                 VStack(alignment: .leading) {
                     Text("Items")
@@ -274,12 +272,28 @@ struct ContentView: View {
                 ]))
 
                 // 🔹 Items
+                text.append(NSAttributedString(string: "\n", attributes: [:])) // Leerzeile
+
+                let monospacedFont = NSFont.monospacedSystemFont(ofSize: 12, weight: .regular)
+
                 for item in items {
-                    let line = String(format: "%-25@ €%-9.2f %-12@\n", item.name, item.price, item.date)
+                    let name = item.name
+                    let price = String(format: "%.2f", item.price)
+                    let date = item.date
+
+                    // Dynamische Padding-Berechnung (z.B. auf 14 Zeichen fixieren)
+                    let namePadding = String(repeating: " ", count: max(0, 14 - name.count))
+                    let pricePadding = String(repeating: " ", count: max(0, 8 - price.count))
+
+                    let line = "\(name)\(namePadding)€\(pricePadding)\(price)   \(date)\n"
+
                     text.append(NSAttributedString(string: line, attributes: [
-                        .font: NSFont.systemFont(ofSize: 12)
+                        .font: monospacedFont
                     ]))
                 }
+
+
+
 
                 text.append(NSAttributedString(string: "\n", attributes: [:]))
 
@@ -314,6 +328,8 @@ struct ContentView: View {
             }
         }
    
+    
+    //MARK: --- Sort name ---
     func sortItemsByName(ascending: Bool = true) {
         if ascending {
             items.sort { $0.name.localizedCaseInsensitiveCompare($1.name) == .orderedAscending }
@@ -323,7 +339,7 @@ struct ContentView: View {
         saveItemsToFile(items)
     }
 
-    
+    //MARK: --- Sort date ---
     func sortItemsByDate(ascending: Bool = true) {
         let formatter = DateFormatter()
         formatter.dateFormat = "dd-MM-yyyy"
@@ -341,6 +357,7 @@ struct ContentView: View {
         saveItemsToFile(items)
     }
 
+    //MARK: --- Sort price ---
     func sortItemsByPrice(ascending: Bool = true) {
         if ascending {
             items.sort { $0.price < $1.price }
@@ -349,6 +366,7 @@ struct ContentView: View {
         }
         saveItemsToFile(items)
     }
+    
     func editItem(_ selected: Item) {
         name = selected.name
         price = String(format: "%.2f", selected.price) // Double → String
