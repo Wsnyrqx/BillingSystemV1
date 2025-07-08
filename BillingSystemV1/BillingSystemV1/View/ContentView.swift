@@ -1,15 +1,8 @@
-//Update 2
+//Update 3
 
 import SwiftUI
 import AppKit
 import PDFKit
-
-struct Item: Identifiable, Codable, Equatable, Hashable {
-    var id = UUID()
-    let name: String
-    let price: Double
-    let date: String
-}
 
 struct ContentView: View {
     @State private var name = ""
@@ -73,6 +66,7 @@ struct ContentView: View {
                     Menu("Basics"){
                         Section("Add | Delete | Edit"){
                             Button("Add") {addItem()}.font(.title3).keyboardShortcut(.return,modifiers: [])
+                            Button("Clear"){clearList()}.font(.title3).keyboardShortcut("c",modifiers: [.command])
                             if let selected = selectedItem {
                                 Button("Delete") {
                                     removeItem(selected)
@@ -169,6 +163,15 @@ struct ContentView: View {
         }
         .frame(minWidth: 800, minHeight: 500)
     }
+    
+    
+    
+    
+    
+    
+    
+    
+    
 
     // MARK: - Funktionen
 
@@ -186,6 +189,12 @@ struct ContentView: View {
         name = ""
         price = ""
         dateString = ""
+        selectedItem = nil
+    }
+
+    func clearList() {
+        items.removeAll()
+        saveItemsToFile(items)
         selectedItem = nil
     }
 
@@ -267,7 +276,7 @@ struct ContentView: View {
                     .font: NSFont.boldSystemFont(ofSize: 13)
                 ]))
 
-                text.append(NSAttributedString(string: "--------------------------------------------\n", attributes: [
+                text.append(NSAttributedString(string: "-----------------------------------------------\n", attributes: [
                     .font: NSFont.systemFont(ofSize: 12)
                 ]))
 
