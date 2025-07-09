@@ -13,6 +13,9 @@ struct ContentView: View {
 
     @State private var items: [Item] = []
     @State private var selectedItem: Item? = nil
+    @State private var loadedFileURL: URL? = nil
+
+
 
     var totalCost: Double {
         items.reduce(0) { $0 + $1.price }
@@ -81,14 +84,24 @@ struct ContentView: View {
                             }
                             
                         }
-                        Section("Print"){
-                            Button("Print") {
+                        Section("Save | Export"){
+                            Button("Export PDF") {
                                 printList()
                             }
                             .font(.title3)
                             .keyboardShortcut("p", modifiers: [.command])
+                            Button("Save Reciept") {
+                                saveJSON(items: items)
+                            }
+                            .font(.title3)
+                            .keyboardShortcut("s", modifiers: [.command])
                         }
-                        Section("Refresh"){
+                        Section("Open | Refresh"){
+                            Button("Open Receipt") {
+                                openJSON()
+                            }
+                            .font(.title3)
+                            .keyboardShortcut("o", modifiers: [.command])
                             Button("↻ Refresh") {
                                 items = loadItemsFromFile()
                             }
@@ -175,6 +188,78 @@ struct ContentView: View {
 
     // MARK: - Funktionen
 
+    func saveJSON(items: [Item]) {
+        let savePanel = NSSavePanel()
+        savePanel.title = "JSON-Datei speichern"
+        savePanel.message = "Wähle einen Dateinamen und Speicherort"
+        savePanel.allowedFileTypes = ["json"]
+        savePanel.nameFieldStringValue = "items.json"
+        savePanel.canCreateDirectories = true
+
+        // Standardordner: ~/Documents/BillingSystem/JSON
+        let fileManager = FileManager.default
+        let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let defaultFolder = documentsURL.appendingPathComponent("BillingSystem/JSON")
+        
+        if !fileManager.fileExists(atPath: defaultFolder.path) {
+            do {
+                try fileManager.createDirectory(at: defaultFolder, withIntermediateDirectories: true)
+            } catch {
+                print("❌ Fehler beim Erstellen des JSON-Ordners: \(error)")
+                return
+            }
+        }
+
+        savePanel.directoryURL = defaultFolder
+
+        savePanel.begin { result in
+            guard result == .OK, let url = savePanel.url else {
+                print("❌ Speichern abgebrochen oder fehlgeschlagen.")
+                return
+            }
+
+            do {
+                let encoder = JSONEncoder()
+                encoder.outputFormatting = .prettyPrinted
+                let data = try encoder.encode(items)
+                try data.write(to: url)
+                print("✅ JSON gespeichert unter: \(url.path)")
+            } catch {
+                print("❌ Fehler beim Schreiben der Datei: \(error)")
+            }
+        }
+    }
+    
+    func openJSON() {
+        let openPanel = NSOpenPanel()
+        openPanel.title = "Rechnung laden"
+        openPanel.allowedFileTypes = ["json"]
+        openPanel.allowsMultipleSelection = false
+        openPanel.canChooseDirectories = false
+
+        let defaultFolder = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("BillingSystem/JSON")
+        openPanel.directoryURL = defaultFolder
+
+        openPanel.begin { result in
+            guard result == .OK, let url = openPanel.url else {
+                print("❌ Laden abgebrochen")
+                return
+            }
+
+            do {
+                let data = try Data(contentsOf: url)
+                let decodedItems = try JSONDecoder().decode([Item].self, from: data)
+                self.items = decodedItems
+                self.loadedFileURL = url
+                print("✅ JSON geladen von: \(url.path)")
+            } catch {
+                print("❌ Fehler beim Laden oder Dekodieren: \(error)")
+            }
+        }
+    }
+
+
     func addItem() {
         guard !name.isEmpty, !price.isEmpty, !dateString.isEmpty,
               let preis = Double(price) else {
@@ -184,13 +269,26 @@ struct ContentView: View {
 
         let newItem = Item(name: name, price: preis, date: dateString)
         items.append(newItem)
-        saveItemsToFile(items)
+
+        // Direkt ins aktuell geladene File schreiben
+        if let fileURL = loadedFileURL {
+            do {
+                let data = try JSONEncoder().encode(items)
+                try data.write(to: fileURL)
+                print("✅ Item gespeichert in: \(fileURL.lastPathComponent)")
+            } catch {
+                print("❌ Fehler beim Speichern in geladene Datei: \(error)")
+            }
+        } else {
+            saveItemsToFile(items) // fallback
+        }
 
         name = ""
         price = ""
         dateString = ""
         selectedItem = nil
     }
+
 
     func clearList() {
         items.removeAll()
@@ -211,9 +309,23 @@ struct ContentView: View {
     }
 
     func getItemsFileURL() -> URL {
-        let dir = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        return dir.appendingPathComponent("items.json")
+        let fileManager = FileManager.default
+        let documentsURL = fileManager.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let billingFolder = documentsURL.appendingPathComponent("BillingSystem")
+        let jsonFolder = billingFolder.appendingPathComponent("JSON")
+
+        // Ordner anlegen, falls sie noch nicht existieren
+        if !fileManager.fileExists(atPath: jsonFolder.path) {
+            do {
+                try fileManager.createDirectory(at: jsonFolder, withIntermediateDirectories: true)
+            } catch {
+                print("❌ Fehler beim Erstellen des JSON-Ordners: \(error)")
+            }
+        }
+
+        return jsonFolder.appendingPathComponent("items.json")
     }
+
 
     func saveItemsToFile(_ items: [Item]) {
         do {

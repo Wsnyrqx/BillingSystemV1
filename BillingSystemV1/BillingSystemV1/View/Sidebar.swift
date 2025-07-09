@@ -27,7 +27,7 @@ struct Sidebar: View {
             Button(action: {
                 selectedPage = .statistics
             }) {
-                Text("📊 Statistik")
+                Text("🗂️ Saved Reciepts")
                     .frame(maxWidth: .infinity)
                     .multilineTextAlignment(.center)
             }
